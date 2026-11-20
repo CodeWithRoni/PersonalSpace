@@ -170,9 +170,17 @@ kbd {
 
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 6px; }
 
-.sidebar-foot { margin-top: auto; display: flex; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.foot-actions { display: flex; gap: 2px; }
+.sync-row { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 0 10px; }
+.sync-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.sync-status svg { flex: none; }
+.sync-error { display: inline-flex; align-items: center; gap: 7px; color: var(--danger); }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .foot-btn {
   flex: 1;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,7 +190,7 @@ kbd {
   border-radius: 8px;
   background: none;
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 12.5px;
   transition: background 0.15s, color 0.15s;
 }
 .foot-btn:hover { background: var(--surface); color: var(--ink); }
@@ -476,3 +484,21 @@ kbd {
 }
 
 @media (min-width: 821px) { .touch-only { display: none; } }
+
+/* ---------- Login ---------- */
+.login { min-height: 100%; display: grid; place-items: center; padding: 24px; }
+.login-card {
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop), 0 0 0 1px var(--line);
+}
+.login-card h1 { margin: 4px 0 0; font-family: var(--font-display); font-size: 28px; letter-spacing: -0.025em; line-height: 1.1; }
+.login-sub { margin: -8px 0 4px; color: var(--ink-2); }
+.brand-mark.big { width: 44px; height: 44px; border-radius: 12px; }
+.login-btn { justify-content: center; height: 42px; margin-top: 4px; }
+.login-btn:disabled { opacity: 0.75; cursor: progress; }

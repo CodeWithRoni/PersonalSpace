@@ -1,6 +1,8 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { LayoutGrid, List, Menu, Plus, Search, X } from "lucide-react";
+import { LoginScreen } from "./components/LoginScreen";
+import { AuthError, flush, getSession, logout, pendingCount, pull, setAuthErrorHandler, subscribe, type Session, type SyncState } from "./lib/sync";
 import { useLibrary } from "./store";
 import type { Bookmark, BookmarkDraft, Collection, Filter } from "./types";
 import { Sidebar } from "./components/Sidebar";
@@ -45,6 +47,30 @@ export default function App() {
 
   useEffect(() => save("view", view), [view]);
 
+  /* ---------- Google Sheets session & sync ---------- */
+  const [session, setSession] = useState<Session | null>(getSession);
+  const [sync, setSync] = useState<SyncState>({ status: "idle" });
+  const lastPull = useRef(0);
+  const { replaceAll, uploadAll } = lib;
+
+  useEffect(() => subscribe(setSync), []);
+
+  /** Loads the latest data from the Sheet. Unsent local changes go first. */
+  const refresh = useCallback(
+    async (s: Session, initial = false) => {
+      if (pendingCount()) {
+        await flush();
+        if (pendingCount()) return;
+      }
+      const remote = await pull(s);
+      lastPull.current = Date.now();
+      // First sign-in with an empty Sheet: upload what's already on this device.
+      if (initial && !remote.bookmarks.length && !remote.collections.length && uploadAll() > 0) return;
+      replaceAll(remote);
+    },
+    [replaceAll, uploadAll],
+  );
+
   const showToast = useCallback((text: string, action?: Toast["action"]) => {
     setToast({ id: Date.now(), text, action });
   }, []);
@@ -54,6 +80,44 @@ export default function App() {
     const t = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const signOut = useCallback(
+    async (message?: string) => {
+      await logout();
+      replaceAll({ bookmarks: [], collections: [] });
+      setSession(null);
+      if (message) showToast(message);
+    },
+    [replaceAll, showToast],
+  );
+
+  useEffect(() => {
+    setAuthErrorHandler(() => signOut("Session expired. Sign in again."));
+  }, [signOut]);
+
+  // Refresh on start and when the window regains focus (at most every 30 s).
+  useEffect(() => {
+    if (!session) return;
+    const run = () =>
+      refresh(session).catch((e) => {
+        if (e instanceof AuthError) signOut(e.message);
+        else if (!(e instanceof TypeError)) showToast(`Couldn't load from Google Sheets: ${(e as Error).message}`);
+      });
+    run();
+    const onFocus = () => Date.now() - lastPull.current > 30000 && run();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [session, refresh, signOut, showToast]);
+
+  const handleLogin = async (s: Session) => {
+    try {
+      await refresh(s, true);
+    } catch (e) {
+      await logout();
+      throw e;
+    }
+    setSession(s);
+  };
 
   const collectionName = useMemo(() => new Map(lib.collections.map((c) => [c.id, c.name])), [lib.collections]);
 
@@ -103,19 +167,19 @@ export default function App() {
   // Keyboard: "/" search, "n" new link, paste a URL anywhere to save it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (draft || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!session || draft || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); }
       if (e.key.toLowerCase() === "n") { e.preventDefault(); newDraft(); }
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (draft || isTyping(e.target)) return;
+      if (!session || draft || isTyping(e.target)) return;
       const url = normalizeUrl(e.clipboardData?.getData("text") ?? "");
       if (url) { e.preventDefault(); newDraft(url); }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("paste", onPaste); };
-  }, [draft, newDraft]);
+  }, [session, draft, newDraft]);
 
   const isDuplicate = useCallback(
     (url: string, id?: string) => lib.bookmarks.some((b) => b.url === url && b.id !== id),
@@ -155,6 +219,37 @@ export default function App() {
 
   const empty = lib.bookmarks.length === 0;
 
+  const toastView = (
+        <div className="toast-region" aria-live="polite">
+          <AnimatePresence>
+            {toast && (
+              <motion.div
+                key={toast.id}
+                className="toast"
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 500, damping: 34 }}
+              >
+                <span>{toast.text}</span>
+                {toast.action && (
+                  <button onClick={() => { toast.action!.run(); setToast(null); }}>{toast.action.label}</button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+  );
+
+  if (!session) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <LoginScreen onLogin={handleLogin} />
+        {toastView}
+      </MotionConfig>
+    );
+  }
+
   return (
     <MotionConfig reducedMotion="user">
       <div className={`app ${navOpen ? "nav-open" : ""}`}>
@@ -168,6 +263,13 @@ export default function App() {
           onDeleteCollection={handleDeleteCollection}
           onImport={() => fileRef.current?.click()}
           onExport={() => exportJson({ bookmarks: lib.bookmarks, collections: lib.collections })}
+          sync={sync}
+          onRefresh={() =>
+            refresh(session)
+              .then(() => showToast("Up to date with Google Sheets"))
+              .catch((e) => showToast(e instanceof TypeError ? "You're offline. Changes will sync when you're back." : (e as Error).message))
+          }
+          onSignOut={() => signOut()}
         />
         <div className="scrim" onClick={() => setNavOpen(false)} />
 
@@ -265,25 +367,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="toast-region" aria-live="polite">
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                key={toast.id}
-                className="toast"
-                initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, transition: { duration: 0.15 } }}
-                transition={{ type: "spring", stiffness: 500, damping: 34 }}
-              >
-                <span>{toast.text}</span>
-                {toast.action && (
-                  <button onClick={() => { toast.action!.run(); setToast(null); }}>{toast.action.label}</button>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {toastView}
 
         <input
           ref={fileRef}

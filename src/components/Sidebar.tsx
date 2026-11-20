@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Bookmark as BookmarkIcon, Download, FolderClosed, FolderOpen, Library, Pencil, Plus, Star, Trash2, Upload } from "lucide-react";
+import { Bookmark as BookmarkIcon, CloudOff, Download, FolderClosed, FolderOpen, Library, Loader2, LogOut, Pencil, Plus, RefreshCw, Sheet, Star, Trash2, TriangleAlert, Upload } from "lucide-react";
+import type { SyncState } from "../lib/sync";
 import type { Collection, Filter } from "../types";
 
 interface Props {
@@ -13,6 +14,23 @@ interface Props {
   onDeleteCollection: (c: Collection) => void;
   onImport: () => void;
   onExport: () => void;
+  sync: SyncState;
+  onRefresh: () => void;
+  onSignOut: () => void;
+}
+
+function SyncStatus({ sync }: { sync: SyncState }) {
+  const changes = (n: number) => `${n} ${n === 1 ? "change" : "changes"}`;
+  switch (sync.status) {
+    case "idle":
+      return <><Sheet size={14} /> Saved to Google Sheets</>;
+    case "saving":
+      return <><Loader2 size={14} className="spin" /> Saving {changes(sync.pending)}</>;
+    case "offline":
+      return <><CloudOff size={14} /> Offline, {changes(sync.pending)} waiting</>;
+    case "error":
+      return <span title={sync.message} className="sync-error"><TriangleAlert size={14} /> Couldn't save, retrying</span>;
+  }
 }
 
 const same = (a: Filter, b: Filter) => JSON.stringify(a) === JSON.stringify(b);
@@ -118,8 +136,17 @@ export function Sidebar(p: Props) {
       </div>
 
       <div className="sidebar-foot">
-        <button className="foot-btn" onClick={p.onImport}><Upload size={15} /> Import</button>
-        <button className="foot-btn" onClick={p.onExport}><Download size={15} /> Export</button>
+        <div className="sync-row" aria-live="polite">
+          <span className="sync-status"><SyncStatus sync={p.sync} /></span>
+          <button className="icon-btn small" onClick={p.onRefresh} aria-label="Reload from Google Sheets" title="Reload from Google Sheets">
+            <RefreshCw size={13} />
+          </button>
+        </div>
+        <div className="foot-actions">
+          <button className="foot-btn" onClick={p.onImport}><Upload size={15} /> Import</button>
+          <button className="foot-btn" onClick={p.onExport}><Download size={15} /> Export</button>
+          <button className="foot-btn" onClick={p.onSignOut}><LogOut size={15} /> Sign out</button>
+        </div>
       </div>
     </nav>
   );

@@ -1,6 +1,6 @@
 # PersonalSpace
 
-Personal bookmark manager — amar sob link, collection ar tag ek jaygay.
+Personal bookmark manager — amar sob link, folder ar tag ek jaygay. Data thake **Google Sheet** e, login hoy **Google Apps Script** diye.
 
 **Features**
 - Folder ar tag diye link sajano, Favorites
@@ -27,12 +27,15 @@ Ek codebase theke build hoy:
 ## Project structure
 
 ```
+apps-script/Code.gs      Google Apps Script backend (login + Sheet e data)
 src/                     React UI (web + sob app e same)
   App.tsx                Main screen: search, filter, cards, dialog, toast
   store.ts               Bookmark ar collection er data logic
   components/            Sidebar, BookmarkCard, BookmarkDialog
   lib/storage.ts         Data save/load (ekhon localStorage)
   lib/importExport.ts    Browser bookmarks import, JSON backup
+  lib/sync.ts            Apps Script er sathe login, sync queue, offline retry
+  components/LoginScreen.tsx  Login screen
   lib/open.ts            Link khola (app e system browser, web e notun tab)
   styles.css             Design tokens, light/dark theme
 src-tauri/           Rust backend + native config
@@ -41,7 +44,38 @@ src-tauri/           Rust backend + native config
 .github/workflows/   CI: sob platform er build
 ```
 
-## Setup
+## Google Sheet + Apps Script setup (ekbar korte hobe)
+
+1. [Google Sheets](https://sheets.new) e notun ekta Sheet khulun, naam din (jemon *PersonalSpace Data*).
+2. Menu theke **Extensions → Apps Script** khulun.
+3. `Code.gs` er sob lekha muche, ei repo-r [`apps-script/Code.gs`](apps-script/Code.gs) puro ta paste korun. **Save** (Ctrl+S).
+4. Baam pasher **⚙ Project Settings** → niche **Script properties** → **Add script property**:
+   - Property: `APP_PASSWORD`
+   - Value: apnar login password (shokto ekta din)
+   - **Save script properties**
+5. Upore dan dike **Deploy → New deployment** → ⚙ theke **Web app** select korun:
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+   - **Deploy** → Google permission chaile **Authorize access** → apnar account → *Advanced → Go to … (unsafe)* → **Allow**
+     (eta apnar nijer script, tai Google ei warning dey)
+6. **Web app URL** ta copy korun (`https://script.google.com/macros/s/…/exec`).
+7. PersonalSpace khule login screen e URL ar password din. Prothom bar login korle Sheet e `Bookmarks` ar `Folders` naame duita tab nije theke toiri hobe.
+
+**URL ta bar bar likhte na chaile:** GitHub repo → Settings → Secrets and variables → Actions → **Variables** → `APPS_SCRIPT_URL` = oi URL. Er por build hoya app/website e URL field ar dekhabe na, shudhu password lagbe.
+
+**Code.gs update korle:** Deploy → **Manage deployments** → ✏️ → Version: **New version** → Deploy. (URL same thakbe.)
+
+**Password bodlate:** Script properties e `APP_PASSWORD` change korun. Ager login gula 90 din por nije theke expire hobe.
+
+### Kivabe kaj kore
+
+- Login e password Apps Script check kore, mille ekta token dey (90 din valid). Password kothao save hoy na, shudhu token device e thake.
+- Prottek change (add, edit, delete, favorite, folder) shathe shathe screen e dekhay, device e cache hoy, tarpor background e Sheet e jay.
+- Internet na thakle change gula jome thake; net firle nije theke Sheet e chole jay. Sidebar er niche status dekhay.
+- App khulle ba window e focus korle Sheet theke latest data ane, tai onno device er change o dekhben.
+- Sheet e haate edit korleo cholbe; column header er naam dekhe data pore.
+
+## Development setup
 
 1. Prerequisites: <https://v2.tauri.app/start/prerequisites/>
    - Node.js 20+ ar Rust (`rustup`)

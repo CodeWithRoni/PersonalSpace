@@ -27,6 +27,8 @@ jobs:
       - run: npm run build:web
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
+          # Optional: Settings → Secrets and variables → Actions → Variables → APPS_SCRIPT_URL
+          VITE_APPS_SCRIPT_URL: ${{ vars.APPS_SCRIPT_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -81,6 +83,7 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_APPS_SCRIPT_URL: ${{ vars.APPS_SCRIPT_URL }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: "PersonalSpace ${{ github.ref_name }}"
@@ -110,6 +113,7 @@ jobs:
       - name: Build APK
         env:
           NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.0.12077973
+          VITE_APPS_SCRIPT_URL: ${{ vars.APPS_SCRIPT_URL }}
         run: |
           [ -d src-tauri/gen/android ] || npm run tauri android init
           # Debug-signed APK that installs directly. For Play Store, add a release keystore — see README.
