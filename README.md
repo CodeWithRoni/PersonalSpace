@@ -1,6 +1,15 @@
 # PersonalSpace
 
-Personal working space — notes, tasks ar amar sob kaj ek jaygay.
+Personal bookmark manager — amar sob link, collection ar tag ek jaygay.
+
+**Features**
+- Collections (folder) ar tags diye link sajano, Favorites
+- Instant search (title, link, note, tag)
+- Grid / list view, light / dark theme (system onujayi)
+- Screen e jekono jaygay link paste korlei save dialog khule
+- Keyboard: `/` search, `N` notun link, `Esc` bondho
+- Delete korle Undo
+- Chrome / Edge / Firefox / Safari theke bookmarks `.html` import, JSON backup export/import
 
 Ek codebase theke build hoy:
 
@@ -13,15 +22,19 @@ Ek codebase theke build hoy:
 | Android | `.apk` / `.aab` | `npm run android:build` |
 | iOS | `.ipa` | `npm run ios:build` (Mac + Xcode lagbe) |
 
-**Stack:** [Tauri v2](https://v2.tauri.app) (Rust) + React + TypeScript + Vite.
+**Stack:** [Tauri v2](https://v2.tauri.app) (Rust) + React + TypeScript + Vite + Motion (animation) + Lucide (icons).
 
 ## Project structure
 
 ```
-src/                 React UI (web + sob app e same)
-  App.tsx            Main layout: Notes, Tasks
-  lib/platform.ts    Tauri naki browser — detect kore
-  lib/storage.ts     Data save/load (ekhon localStorage)
+src/                     React UI (web + sob app e same)
+  App.tsx                Main screen: search, filter, cards, dialog, toast
+  store.ts               Bookmark ar collection er data logic
+  components/            Sidebar, BookmarkCard, BookmarkDialog
+  lib/storage.ts         Data save/load (ekhon localStorage)
+  lib/importExport.ts    Browser bookmarks import, JSON backup
+  lib/open.ts            Link khola (app e system browser, web e notun tab)
+  styles.css             Design tokens, light/dark theme
 src-tauri/           Rust backend + native config
   src/lib.rs         Tauri commands (e.g. app_info)
   tauri.conf.json    App name, window, bundle settings

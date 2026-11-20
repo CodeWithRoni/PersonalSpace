@@ -1,144 +1,305 @@
-import { useEffect, useState } from "react";
-import { getAppInfo, type AppInfo } from "./lib/platform";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { LayoutGrid, List, Menu, Plus, Search, X } from "lucide-react";
+import { useLibrary } from "./store";
+import type { Bookmark, BookmarkDraft, Collection, Filter } from "./types";
+import { Sidebar } from "./components/Sidebar";
+import { BookmarkCard } from "./components/BookmarkCard";
+import { BookmarkDialog } from "./components/BookmarkDialog";
+import { domainOf, normalizeUrl } from "./lib/url";
+import { openLink } from "./lib/open";
+import { exportJson, importFile } from "./lib/importExport";
 import { load, save } from "./lib/storage";
-import "./App.css";
+import "./styles.css";
 
-type Section = "notes" | "tasks";
-
-interface Note {
-  id: string;
-  title: string;
-  body: string;
-  updatedAt: number;
-}
-
-interface Task {
-  id: string;
+interface Toast {
+  id: number;
   text: string;
-  done: boolean;
+  action?: { label: string; run: () => void };
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10);
+const emptyDraft = (over: Partial<BookmarkDraft> = {}): BookmarkDraft => ({
+  url: "",
+  title: "",
+  description: "",
+  collectionId: null,
+  tags: [],
+  favorite: false,
+  ...over,
+});
 
-function usePersisted<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(() => load(key, initial));
-  useEffect(() => save(key, value), [key, value]);
-  return [value, setValue] as const;
-}
-
-function Notes() {
-  const [notes, setNotes] = usePersisted<Note[]>("notes", []);
-  const [activeId, setActiveId] = useState<string | null>(notes[0]?.id ?? null);
-  const active = notes.find((n) => n.id === activeId) ?? null;
-
-  const addNote = () => {
-    const note: Note = { id: uid(), title: "Untitled", body: "", updatedAt: Date.now() };
-    setNotes([note, ...notes]);
-    setActiveId(note.id);
-  };
-
-  const update = (patch: Partial<Note>) =>
-    setNotes(notes.map((n) => (n.id === activeId ? { ...n, ...patch, updatedAt: Date.now() } : n)));
-
-  const remove = (id: string) => {
-    const rest = notes.filter((n) => n.id !== id);
-    setNotes(rest);
-    if (id === activeId) setActiveId(rest[0]?.id ?? null);
-  };
-
-  return (
-    <div className="notes">
-      <div className="notes-list">
-        <button className="primary" onClick={addNote}>+ New note</button>
-        {notes.map((n) => (
-          <div
-            key={n.id}
-            className={`note-item ${n.id === activeId ? "active" : ""}`}
-            onClick={() => setActiveId(n.id)}
-          >
-            <span>{n.title || "Untitled"}</span>
-            <button className="ghost" onClick={(e) => { e.stopPropagation(); remove(n.id); }}>×</button>
-          </div>
-        ))}
-        {notes.length === 0 && <p className="muted">No notes yet.</p>}
-      </div>
-      <div className="editor">
-        {active ? (
-          <>
-            <input
-              className="title-input"
-              value={active.title}
-              onChange={(e) => update({ title: e.target.value })}
-            />
-            <textarea
-              value={active.body}
-              placeholder="Write anything…"
-              onChange={(e) => update({ body: e.target.value })}
-            />
-          </>
-        ) : (
-          <p className="muted">Select or create a note.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Tasks() {
-  const [tasks, setTasks] = usePersisted<Task[]>("tasks", []);
-  const [text, setText] = useState("");
-
-  const add = () => {
-    if (!text.trim()) return;
-    setTasks([...tasks, { id: uid(), text: text.trim(), done: false }]);
-    setText("");
-  };
-
-  return (
-    <div className="tasks">
-      <form className="task-form" onSubmit={(e) => { e.preventDefault(); add(); }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a task…" />
-        <button className="primary" type="submit">Add</button>
-      </form>
-      <ul>
-        {tasks.map((t) => (
-          <li key={t.id} className={t.done ? "done" : ""}>
-            <label>
-              <input
-                type="checkbox"
-                checked={t.done}
-                onChange={() => setTasks(tasks.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))}
-              />
-              {t.text}
-            </label>
-            <button className="ghost" onClick={() => setTasks(tasks.filter((x) => x.id !== t.id))}>×</button>
-          </li>
-        ))}
-      </ul>
-      {tasks.length === 0 && <p className="muted">Nothing to do. Nice.</p>}
-    </div>
-  );
-}
+const isTyping = (el: EventTarget | null) =>
+  el instanceof HTMLElement && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
 export default function App() {
-  const [section, setSection] = useState<Section>("notes");
-  const [info, setInfo] = useState<AppInfo | null>(null);
+  const lib = useLibrary();
+  const [filter, setFilter] = useState<Filter>({ kind: "all" });
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const [view, setView] = useState<"grid" | "list">(() => load("view", "grid"));
+  const [draft, setDraft] = useState<BookmarkDraft | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    getAppInfo().then(setInfo).catch(() => setInfo(null));
+  useEffect(() => save("view", view), [view]);
+
+  const showToast = useCallback((text: string, action?: Toast["action"]) => {
+    setToast({ id: Date.now(), text, action });
   }, []);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const collectionName = useMemo(() => new Map(lib.collections.map((c) => [c.id, c.name])), [lib.collections]);
+
+  const counts = useMemo(() => {
+    const byCollection = new Map<string, number>();
+    let favorites = 0;
+    for (const b of lib.bookmarks) {
+      if (b.favorite) favorites++;
+      if (b.collectionId) byCollection.set(b.collectionId, (byCollection.get(b.collectionId) ?? 0) + 1);
+    }
+    return { all: lib.bookmarks.length, favorites, byCollection };
+  }, [lib.bookmarks]);
+
+  const tags = useMemo(() => {
+    const m = new Map<string, number>();
+    lib.bookmarks.forEach((b) => b.tags.forEach((t) => m.set(t, (m.get(t) ?? 0) + 1)));
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [lib.bookmarks]);
+
+  const visible = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    return lib.bookmarks.filter((b) => {
+      if (filter.kind === "favorites" && !b.favorite) return false;
+      if (filter.kind === "collection" && b.collectionId !== filter.id) return false;
+      if (filter.kind === "tag" && !b.tags.includes(filter.tag)) return false;
+      if (!q) return true;
+      return [b.title, b.url, b.description, ...b.tags].some((s) => s.toLowerCase().includes(q));
+    });
+  }, [lib.bookmarks, filter, deferredQuery]);
+
+  const heading =
+    filter.kind === "all"
+      ? "All bookmarks"
+      : filter.kind === "favorites"
+        ? "Favorites"
+        : filter.kind === "tag"
+          ? `#${filter.tag}`
+          : collectionName.get(filter.id) ?? "Collection";
+
+  const newDraft = useCallback(
+    (url = "") =>
+      setDraft(
+        emptyDraft({
+          url,
+          collectionId: filter.kind === "collection" ? filter.id : null,
+          tags: filter.kind === "tag" ? [filter.tag] : [],
+          favorite: filter.kind === "favorites",
+        }),
+      ),
+    [filter],
+  );
+
+  // Keyboard: "/" search, "n" new link, paste a URL anywhere to save it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (draft || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key.toLowerCase() === "n") { e.preventDefault(); newDraft(); }
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      if (draft || isTyping(e.target)) return;
+      const url = normalizeUrl(e.clipboardData?.getData("text") ?? "");
+      if (url) { e.preventDefault(); newDraft(url); }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("paste", onPaste);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("paste", onPaste); };
+  }, [draft, newDraft]);
+
+  const isDuplicate = useCallback(
+    (url: string, id?: string) => lib.bookmarks.some((b) => b.url === url && b.id !== id),
+    [lib.bookmarks],
+  );
+
+  const handleSave = (d: BookmarkDraft) => {
+    lib.upsert(d);
+    setDraft(null);
+    showToast(d.id ? "Changes saved" : `Saved ${domainOf(d.url)}`);
+  };
+
+  const handleDelete = useCallback(
+    (b: Bookmark) => {
+      lib.remove(b.id);
+      showToast(`Deleted ${b.title}`, { label: "Undo", run: () => lib.restore(b) });
+    },
+    [lib, showToast],
+  );
+
+  const handleDeleteCollection = (c: Collection) => {
+    lib.deleteCollection(c.id);
+    if (filter.kind === "collection" && filter.id === c.id) setFilter({ kind: "all" });
+    showToast(`Deleted collection ${c.name}. Its links are still in All bookmarks.`);
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const added = lib.merge(await importFile(file, lib));
+      showToast(added ? `Imported ${added} link${added === 1 ? "" : "s"}` : "No new links found in that file");
+    } catch {
+      showToast("That file couldn't be read. Use a PersonalSpace .json backup or a browser bookmarks .html export.");
+    }
+  };
+
+  const selectFilter = (f: Filter) => { setFilter(f); setNavOpen(false); };
+
+  const empty = lib.bookmarks.length === 0;
+
   return (
-    <div className="app">
-      <nav className="sidebar">
-        <h1>PersonalSpace</h1>
-        <button className={section === "notes" ? "active" : ""} onClick={() => setSection("notes")}>📝 Notes</button>
-        <button className={section === "tasks" ? "active" : ""} onClick={() => setSection("tasks")}>✅ Tasks</button>
-        <div className="runtime">
-          {info ? `${info.runtime} · ${info.os} · v${info.version}` : "…"}
+    <MotionConfig reducedMotion="user">
+      <div className={`app ${navOpen ? "nav-open" : ""}`}>
+        <Sidebar
+          filter={filter}
+          setFilter={selectFilter}
+          collections={lib.collections}
+          counts={counts}
+          tags={tags}
+          onAddCollection={lib.addCollection}
+          onRenameCollection={lib.renameCollection}
+          onDeleteCollection={handleDeleteCollection}
+          onImport={() => fileRef.current?.click()}
+          onExport={() => exportJson({ bookmarks: lib.bookmarks, collections: lib.collections })}
+        />
+        <div className="scrim" onClick={() => setNavOpen(false)} />
+
+        <main className="main">
+          <header className="topbar">
+            <button className="icon-btn menu-btn" onClick={() => setNavOpen(true)} aria-label="Open menu">
+              <Menu size={20} />
+            </button>
+            <div className="search">
+              <Search size={17} />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && (setQuery(""), e.currentTarget.blur())}
+                placeholder="Search bookmarks"
+                aria-label="Search bookmarks"
+              />
+              {query ? (
+                <button className="icon-btn small" onClick={() => setQuery("")} aria-label="Clear search"><X size={14} /></button>
+              ) : (
+                <kbd>/</kbd>
+              )}
+            </div>
+            <div className="seg" role="group" aria-label="Layout">
+              <button className={view === "grid" ? "on" : ""} onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}>
+                <LayoutGrid size={16} />
+              </button>
+              <button className={view === "list" ? "on" : ""} onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"}>
+                <List size={16} />
+              </button>
+            </div>
+            <button className="btn btn-primary add-btn" onClick={() => newDraft()}>
+              <Plus size={17} /> <span>Add link</span>
+            </button>
+          </header>
+
+          <section className="content">
+            <div className="content-head">
+              <h1>{heading}</h1>
+              {!empty && (
+                <span className="result-count">
+                  {visible.length} {visible.length === 1 ? "link" : "links"}
+                </span>
+              )}
+            </div>
+
+            {empty ? (
+              <div className="empty">
+                <h2>Your links live here</h2>
+                <p className="desktop-only">Paste a link anywhere on this screen, or press <kbd>N</kbd>, to save your first bookmark.</p>
+                <p className="touch-only">Tap Add link to save your first bookmark.</p>
+                <div className="empty-actions">
+                  <button className="btn btn-primary" onClick={() => newDraft()}><Plus size={16} /> Add link</button>
+                  <button className="btn" onClick={() => fileRef.current?.click()}>Import from browser</button>
+                </div>
+              </div>
+            ) : visible.length === 0 ? (
+              <div className="empty small">
+                <p>{query ? `Nothing matches “${query}”.` : "No links here yet. Add one, or move links in from another collection."}</p>
+              </div>
+            ) : (
+              <motion.div layout className={`cards cards-${view}`}>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {visible.map((b) => (
+                    <BookmarkCard
+                      key={b.id}
+                      bookmark={b}
+                      view={view}
+                      collectionName={filter.kind !== "collection" && b.collectionId ? collectionName.get(b.collectionId) : undefined}
+                      onOpen={(x) => openLink(x.url)}
+                      onEdit={(x) => setDraft(x)}
+                      onDelete={handleDelete}
+                      onFavorite={lib.toggleFavorite}
+                      onTag={(t) => selectFilter({ kind: "tag", tag: t })}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </section>
+        </main>
+
+        <AnimatePresence>
+          {draft && (
+            <BookmarkDialog
+              key="dialog"
+              initial={draft}
+              collections={lib.collections}
+              isDuplicate={isDuplicate}
+              onSave={handleSave}
+              onCreateCollection={lib.addCollection}
+              onClose={() => setDraft(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        <div className="toast-region" aria-live="polite">
+          <AnimatePresence>
+            {toast && (
+              <motion.div
+                key={toast.id}
+                className="toast"
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 500, damping: 34 }}
+              >
+                <span>{toast.text}</span>
+                {toast.action && (
+                  <button onClick={() => { toast.action!.run(); setToast(null); }}>{toast.action.label}</button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </nav>
-      <main className="content">{section === "notes" ? <Notes /> : <Tasks />}</main>
-    </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".html,.htm,.json"
+          hidden
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ""; }}
+        />
+      </div>
+    </MotionConfig>
   );
 }
