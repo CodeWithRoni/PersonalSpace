@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Bookmark as BookmarkIcon, CloudOff, Download, FolderClosed, FolderOpen, Library, Loader2, LogOut, Pencil, Plus, RefreshCw, Sheet, Star, Trash2, TriangleAlert, Upload } from "lucide-react";
+import logo from "../assets/logo.svg";
+import { CloudOff, Download, FolderClosed, FolderOpen, Library, Loader2, LogOut, Pencil, Plus, RefreshCw, Sheet, Star, Trash2, TriangleAlert, Upload } from "lucide-react";
 import type { SyncState } from "../lib/sync";
 import type { Collection, Filter } from "../types";
 
@@ -77,7 +78,7 @@ export function Sidebar(p: Props) {
   return (
     <nav className="sidebar" aria-label="Library">
       <div className="brand">
-        <span className="brand-mark"><BookmarkIcon size={16} strokeWidth={2.4} /></span>
+        <img className="brand-mark" src={logo} alt="" />
         PersonalSpace
       </div>
 

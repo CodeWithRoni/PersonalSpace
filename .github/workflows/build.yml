@@ -116,6 +116,7 @@ jobs:
           VITE_APPS_SCRIPT_URL: ${{ vars.APPS_SCRIPT_URL }}
         run: |
           [ -d src-tauri/gen/android ] || npm run tauri android init
+          npx tauri icon src-tauri/icons/icon.png   # PersonalSpace launcher icons
           # Debug-signed APK that installs directly. For Play Store, add a release keystore — see README.
           npm run tauri android build -- --apk --debug
       - uses: actions/upload-artifact@v4

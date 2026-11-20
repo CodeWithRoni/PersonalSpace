@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Bookmark as BookmarkIcon, Loader2 } from "lucide-react";
+import logo from "../assets/logo.svg";
+import { Loader2 } from "lucide-react";
 import { DEFAULT_URL, login, type Session } from "../lib/sync";
 import { load, save } from "../lib/storage";
 
@@ -33,7 +34,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session) => Promise<void
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 380, damping: 32 }}
       >
-        <span className="brand-mark big"><BookmarkIcon size={22} strokeWidth={2.4} /></span>
+        <img className="brand-mark big" src={logo} alt="" />
         <h1>PersonalSpace</h1>
         <p className="login-sub">Sign in to load your bookmarks from Google Sheets.</p>
 
