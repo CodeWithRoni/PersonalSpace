@@ -27,10 +27,6 @@ export function hueFor(domain: string): number {
   return h;
 }
 
-export function faviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
-}
-
 /** A readable fallback title from a URL: "github.com/tauri-apps" → "github.com / tauri-apps". */
 export function titleFromUrl(url: string): string {
   try {

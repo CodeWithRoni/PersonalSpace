@@ -1,8 +1,9 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { FolderClosed, Pencil, Star, Trash2 } from "lucide-react";
 import type { Bookmark } from "../types";
-import { domainOf, faviconUrl, hueFor } from "../lib/url";
+import { domainOf, hueFor } from "../lib/url";
+import { cachedIcon, findIcon, rootDomain } from "../lib/favicon";
 
 interface Props {
   bookmark: Bookmark;
@@ -15,10 +16,30 @@ interface Props {
   onTag: (tag: string) => void;
 }
 
-export function Favicon({ domain, size = 20 }: { domain: string; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <span className="favicon-fallback">{domain.charAt(0).toUpperCase()}</span>;
-  return <img src={faviconUrl(domain)} width={size} height={size} alt="" loading="lazy" onError={() => setFailed(true)} />;
+/**
+ * Site icon: the real favicon when one can be found, otherwise a monogram
+ * in the site's colour. The monogram shows instantly and the real icon fades in.
+ */
+export function Favicon({ domain, size = 22 }: { domain: string; size?: number }) {
+  const [src, setSrc] = useState<string | null | undefined>(() => cachedIcon(domain));
+
+  useEffect(() => {
+    let alive = true;
+    setSrc(cachedIcon(domain));
+    findIcon(domain).then((s) => alive && setSrc(s));
+    return () => { alive = false; };
+  }, [domain]);
+
+  const name = rootDomain(domain).split(".")[0] || domain;
+  return (
+    <span className="favicon" style={{ "--hue": hueFor(domain), width: size, height: size } as React.CSSProperties}>
+      {src ? (
+        <img key={src} src={src} alt="" referrerPolicy="no-referrer" onError={() => setSrc(null)} />
+      ) : (
+        <span className="monogram" style={{ fontSize: size * 0.62 }}>{name.charAt(0).toUpperCase()}</span>
+      )}
+    </span>
+  );
 }
 
 export const BookmarkCard = memo(function BookmarkCard({
@@ -45,8 +66,8 @@ export const BookmarkCard = memo(function BookmarkCard({
       style={{ "--hue": hue } as React.CSSProperties}
     >
       <button className="card-main" onClick={() => onOpen(b)} title={b.url}>
-        <span className="card-icon">
-          <Favicon domain={domain} />
+        <span className={`card-icon ${view === "list" ? "small" : ""}`}>
+          <Favicon domain={domain} size={view === "list" ? 20 : 24} />
         </span>
         <span className="card-text">
           <span className="card-title">{b.title}</span>
