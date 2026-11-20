@@ -67,12 +67,6 @@ export default function App() {
     return { all: lib.bookmarks.length, favorites, byCollection };
   }, [lib.bookmarks]);
 
-  const tags = useMemo(() => {
-    const m = new Map<string, number>();
-    lib.bookmarks.forEach((b) => b.tags.forEach((t) => m.set(t, (m.get(t) ?? 0) + 1)));
-    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [lib.bookmarks]);
-
   const visible = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
     return lib.bookmarks.filter((b) => {
@@ -91,7 +85,7 @@ export default function App() {
         ? "Favorites"
         : filter.kind === "tag"
           ? `#${filter.tag}`
-          : collectionName.get(filter.id) ?? "Collection";
+          : collectionName.get(filter.id) ?? "Folder";
 
   const newDraft = useCallback(
     (url = "") =>
@@ -145,7 +139,7 @@ export default function App() {
   const handleDeleteCollection = (c: Collection) => {
     lib.deleteCollection(c.id);
     if (filter.kind === "collection" && filter.id === c.id) setFilter({ kind: "all" });
-    showToast(`Deleted collection ${c.name}. Its links are still in All bookmarks.`);
+    showToast(`Deleted folder ${c.name}. Its links are still in All bookmarks.`);
   };
 
   const handleImport = async (file: File) => {
@@ -169,7 +163,6 @@ export default function App() {
           setFilter={selectFilter}
           collections={lib.collections}
           counts={counts}
-          tags={tags}
           onAddCollection={lib.addCollection}
           onRenameCollection={lib.renameCollection}
           onDeleteCollection={handleDeleteCollection}
@@ -234,7 +227,7 @@ export default function App() {
               </div>
             ) : visible.length === 0 ? (
               <div className="empty small">
-                <p>{query ? `Nothing matches “${query}”.` : "No links here yet. Add one, or move links in from another collection."}</p>
+                <p>{query ? `Nothing matches “${query}”.` : filter.kind === "collection" ? "This folder is empty. Add a link, or edit a link and choose this folder." : "No links here yet."}</p>
               </div>
             ) : (
               <motion.div layout className={`cards cards-${view}`}>

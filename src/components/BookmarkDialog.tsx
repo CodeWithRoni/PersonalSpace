@@ -118,13 +118,13 @@ export function BookmarkDialog({ initial, collections, isDuplicate, onSave, onCr
 
         <div className="field-row">
           <label className="field">
-            <span>Collection</span>
+            <span>Folder</span>
             <select value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>
               <option value="">None</option>
               {collections.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-              <option value="__new">New collection…</option>
+              <option value="__new">New folder…</option>
             </select>
           </label>
           <label className="field">
@@ -135,7 +135,7 @@ export function BookmarkDialog({ initial, collections, isDuplicate, onSave, onCr
 
         {collectionId === "__new" && (
           <label className="field">
-            <span>New collection name</span>
+            <span>New folder name</span>
             <input value={newCollection} onChange={(e) => setNewCollection(e.target.value)} autoFocus />
           </label>
         )}

@@ -21,7 +21,7 @@ export function exportJson(lib: Library) {
 
 /**
  * Reads a PersonalSpace JSON backup, or a bookmarks .html file exported from
- * Chrome / Edge / Firefox / Safari (Netscape format). Browser folders become collections.
+ * Chrome / Edge / Firefox / Safari (Netscape format). Browser folders become PersonalSpace folders.
  */
 export async function importFile(file: File, existing: Library): Promise<Library> {
   const text = await file.text();

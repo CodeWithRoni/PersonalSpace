@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Bookmark as BookmarkIcon, Download, FolderClosed, Hash, Library, Pencil, Plus, Star, Trash2, Upload } from "lucide-react";
+import { Bookmark as BookmarkIcon, Download, FolderClosed, FolderOpen, Library, Pencil, Plus, Star, Trash2, Upload } from "lucide-react";
 import type { Collection, Filter } from "../types";
 
 interface Props {
@@ -8,7 +8,6 @@ interface Props {
   setFilter: (f: Filter) => void;
   collections: Collection[];
   counts: { all: number; favorites: number; byCollection: Map<string, number> };
-  tags: [string, number][];
   onAddCollection: (name: string) => void;
   onRenameCollection: (id: string, name: string) => void;
   onDeleteCollection: (c: Collection) => void;
@@ -71,8 +70,8 @@ export function Sidebar(p: Props) {
 
       <div className="nav-group">
         <div className="nav-heading">
-          <span>Collections</span>
-          <button className="icon-btn small" onClick={() => setAdding(true)} aria-label="New collection">
+          <span>Folders</span>
+          <button className="icon-btn small" onClick={() => setAdding(true)} aria-label="New folder">
             <Plus size={15} />
           </button>
         </div>
@@ -90,7 +89,7 @@ export function Sidebar(p: Props) {
             <NavItem
               key={c.id}
               active={same(p.filter, { kind: "collection", id: c.id })}
-              icon={<FolderClosed size={17} />}
+              icon={same(p.filter, { kind: "collection", id: c.id }) ? <FolderOpen size={17} /> : <FolderClosed size={17} />}
               label={c.name}
               count={p.counts.byCollection.get(c.id) ?? 0}
               onClick={() => p.setFilter({ kind: "collection", id: c.id })}
@@ -108,32 +107,15 @@ export function Sidebar(p: Props) {
           <input
             className="nav-input"
             autoFocus
-            placeholder="Collection name"
+            placeholder="Folder name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={submitNew}
             onKeyDown={(e) => { if (e.key === "Enter") submitNew(); if (e.key === "Escape") { setName(""); setAdding(false); } }}
           />
         )}
-        {p.collections.length === 0 && !adding && <p className="nav-empty">Group links by project or topic.</p>}
+        {p.collections.length === 0 && !adding && <p className="nav-empty">Make a folder to group links by project or topic.</p>}
       </div>
-
-      {p.tags.length > 0 && (
-        <div className="nav-group">
-          <div className="nav-heading"><span>Tags</span></div>
-          <div className="tag-cloud">
-            {p.tags.map(([t, n]) => (
-              <button
-                key={t}
-                className={`chip ${same(p.filter, { kind: "tag", tag: t }) ? "chip-on" : ""}`}
-                onClick={() => p.setFilter({ kind: "tag", tag: t })}
-              >
-                <Hash size={11} />{t}<span className="chip-n">{n}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="sidebar-foot">
         <button className="foot-btn" onClick={p.onImport}><Upload size={15} /> Import</button>

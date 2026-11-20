@@ -3,13 +3,13 @@
 Personal bookmark manager — amar sob link, collection ar tag ek jaygay.
 
 **Features**
-- Collections (folder) ar tags diye link sajano, Favorites
+- Folder ar tag diye link sajano, Favorites
 - Instant search (title, link, note, tag)
 - Grid / list view, light / dark theme (system onujayi)
 - Screen e jekono jaygay link paste korlei save dialog khule
 - Keyboard: `/` search, `N` notun link, `Esc` bondho
 - Delete korle Undo
-- Chrome / Edge / Firefox / Safari theke bookmarks `.html` import, JSON backup export/import
+- Chrome / Edge / Firefox / Safari theke bookmarks `.html` import (browser er folder gula folder hoye ashe), JSON backup export/import
 
 Ek codebase theke build hoy:
 
