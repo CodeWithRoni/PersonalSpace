@@ -61,7 +61,7 @@ src-tauri/           Rust backend + native config
 6. **Web app URL** ta copy korun (`https://script.google.com/macros/s/…/exec`).
 7. PersonalSpace khule login screen e URL ar password din. Prothom bar login korle Sheet e `Bookmarks` ar `Folders` naame duita tab nije theke toiri hobe.
 
-**URL ta bar bar likhte na chaile:** GitHub repo → Settings → Secrets and variables → Actions → **Variables** → `APPS_SCRIPT_URL` = oi URL. Er por build hoya app/website e URL field ar dekhabe na, shudhu password lagbe.
+**URL kothay thake:** [`src/config.ts`](src/config.ts) e. Ekhane URL thakle login e shudhu password chay. Notun deployment (notun URL) korle oi file e URL bodlan.
 
 **Code.gs update korle:** Deploy → **Manage deployments** → ✏️ → Version: **New version** → Deploy. (URL same thakbe.)
 

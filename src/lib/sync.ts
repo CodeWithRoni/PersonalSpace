@@ -24,8 +24,10 @@ export type SyncState =
 
 export class AuthError extends Error {}
 
-/** Set VITE_APPS_SCRIPT_URL at build time to skip typing the URL on the login screen. */
-export const DEFAULT_URL: string = import.meta.env.VITE_APPS_SCRIPT_URL ?? "";
+import { APPS_SCRIPT_URL } from "../config";
+
+/** From src/config.ts — when set, the login screen only asks for the password. */
+export const DEFAULT_URL: string = APPS_SCRIPT_URL;
 
 export const getSession = () => load<Session | null>("session", null);
 const setSession = (s: Session | null) => save("session", s);
