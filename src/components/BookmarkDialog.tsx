@@ -84,7 +84,7 @@ export function BookmarkDialog({ initial, collections, isDuplicate, onSave, onCr
         <label className="field">
           <span>Link</span>
           <div className="url-input">
-            <span className="url-icon">{domain ? <Favicon key={domain} domain={domain} size={18} /> : <Link2 size={16} />}</span>
+            <span className="url-icon">{domain ? <Favicon domain={domain} size={22} /> : <Link2 size={16} />}</span>
             <input
               ref={firstField}
               value={url}

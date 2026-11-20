@@ -1,9 +1,9 @@
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
 import { motion } from "motion/react";
 import { FolderClosed, Pencil, Star, Trash2 } from "lucide-react";
 import type { Bookmark } from "../types";
 import { domainOf, hueFor } from "../lib/url";
-import { cachedIcon, findIcon, rootDomain } from "../lib/favicon";
+import { rootDomain } from "../lib/url";
 
 interface Props {
   bookmark: Bookmark;
@@ -17,27 +17,19 @@ interface Props {
 }
 
 /**
- * Site icon: the real favicon when one can be found, otherwise a monogram
- * in the site's colour. The monogram shows instantly and the real icon fades in.
+ * PersonalSpace's own icon for every link: a gradient tile in the site's
+ * colour with its initial. Same style everywhere, different colour per site,
+ * no network requests.
  */
-export function Favicon({ domain, size = 22 }: { domain: string; size?: number }) {
-  const [src, setSrc] = useState<string | null | undefined>(() => cachedIcon(domain));
-
-  useEffect(() => {
-    let alive = true;
-    setSrc(cachedIcon(domain));
-    findIcon(domain).then((s) => alive && setSrc(s));
-    return () => { alive = false; };
-  }, [domain]);
-
+export function Favicon({ domain, size = 40 }: { domain: string; size?: number }) {
   const name = rootDomain(domain).split(".")[0] || domain;
   return (
-    <span className="favicon" style={{ "--hue": hueFor(domain), width: size, height: size } as React.CSSProperties}>
-      {src ? (
-        <img key={src} src={src} alt="" referrerPolicy="no-referrer" onError={() => setSrc(null)} />
-      ) : (
-        <span className="monogram" style={{ fontSize: size * 0.62 }}>{name.charAt(0).toUpperCase()}</span>
-      )}
+    <span
+      className="site-icon"
+      style={{ "--hue": hueFor(domain), width: size, height: size, fontSize: size * 0.46, borderRadius: size * 0.28 } as React.CSSProperties}
+      aria-hidden="true"
+    >
+      {name.charAt(0).toUpperCase()}
     </span>
   );
 }
@@ -66,9 +58,7 @@ export const BookmarkCard = memo(function BookmarkCard({
       style={{ "--hue": hue } as React.CSSProperties}
     >
       <button className="card-main" onClick={() => onOpen(b)} title={b.url}>
-        <span className={`card-icon ${view === "list" ? "small" : ""}`}>
-          <Favicon domain={domain} size={view === "list" ? 20 : 24} />
-        </span>
+        <Favicon domain={domain} size={view === "list" ? 36 : 40} />
         <span className="card-text">
           <span className="card-title">{b.title}</span>
           <span className="card-domain">

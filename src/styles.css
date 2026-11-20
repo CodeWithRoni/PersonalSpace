@@ -16,9 +16,6 @@
   --star: #e2a516;
   --danger: #c8323a;
   --spine-l: 58%;
-  --tile-l: 94%;
-  --glyph-l: 40%;
-  --icon-tile: #f4f6f9;
   --shadow-pop: 0 1px 2px rgb(24 32 46 / 6%), 0 12px 32px -8px rgb(24 32 46 / 22%);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -52,9 +49,6 @@
     --star: #f2c14e;
     --danger: #ff6b72;
     --spine-l: 62%;
-    --tile-l: 20%;
-    --glyph-l: 74%;
-    --icon-tile: #e9ecf2;
     --shadow-pop: 0 1px 2px rgb(0 0 0 / 30%), 0 16px 40px -8px rgb(0 0 0 / 60%);
     color-scheme: dark;
   }
@@ -321,42 +315,38 @@ kbd {
 .card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-pop); }
 
 .card-main { display: flex; gap: 12px; align-items: flex-start; padding: 0; border: none; background: none; text-align: left; min-width: 0; }
-.card-icon {
+/* Link icon: one style for every site, coloured by domain. */
+.site-icon {
+  position: relative;
   flex: none;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--icon-tile);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-.card-icon:has(.monogram) { box-shadow: none; }
-.card-icon:has(.monogram) .favicon { width: 100% !important; height: 100% !important; }
-.card-icon:has(.monogram) .monogram { font-size: 18px !important; border-radius: 10px; }
-.card-icon { overflow: hidden; }
-.favicon { display: grid; place-items: center; flex: none; }
-.favicon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 5px;
-  animation: icon-in 0.25s var(--ease);
-}
-.monogram {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
+  overflow: hidden;
   font-family: var(--font-display);
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.02em;
   color: #fff;
-  background: linear-gradient(140deg, hsl(var(--hue) 72% 58%), hsl(calc(var(--hue) + 35) 68% 42%));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 22%);
+  background:
+    radial-gradient(120% 90% at 20% 0%, rgb(255 255 255 / 32%), transparent 55%),
+    linear-gradient(145deg, hsl(var(--hue) 78% 58%), hsl(calc(var(--hue) + 34) 72% 39%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 30%),
+    inset 0 -1px 0 rgb(0 0 0 / 12%),
+    0 2px 6px -2px hsl(var(--hue) 70% 35% / 55%);
 }
-@keyframes icon-in { from { opacity: 0; transform: scale(0.85); } }
+.site-icon::after {
+  /* faint bookmark ribbon in the corner ties it to the PersonalSpace logo */
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 18%;
+  width: 16%;
+  height: 34%;
+  background: rgb(255 255 255 / 28%);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
 .card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .card-title {
   font-weight: 600;
@@ -389,7 +379,6 @@ kbd {
 
 .card-list { flex-direction: row; align-items: center; padding: 10px 10px 10px 18px; }
 .card-list .card-main { flex: 1; align-items: center; }
-.card-list .card-icon { width: 34px; height: 34px; }
 .card-list .card-title { -webkit-line-clamp: 1; }
 .card-list .card-actions { margin: 0; }
 .card-list .card-tags { flex-wrap: nowrap; }
@@ -445,7 +434,7 @@ kbd {
 }
 .url-input { display: flex; align-items: center; gap: 8px; }
 .url-input input { padding: 0; border: none; box-shadow: none !important; }
-.url-icon { display: grid; place-items: center; width: 18px; height: 18px; flex: none; color: var(--muted); }
+.url-icon { display: grid; place-items: center; width: 22px; height: 22px; flex: none; color: var(--muted); }
 .field-row { display: flex; gap: 12px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; }

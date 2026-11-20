@@ -23,8 +23,9 @@ export function domainOf(url: string): string {
 /** Stable hue per domain, used for each card's colour spine. */
 export function hueFor(domain: string): number {
   let h = 0;
-  for (let i = 0; i < domain.length; i++) h = (h * 31 + domain.charCodeAt(i)) % 360;
-  return h;
+  for (let i = 0; i < domain.length; i++) h = (h * 31 + domain.charCodeAt(i)) % 320;
+  // Skip the yellow band (50–90°) where white text loses contrast.
+  return h < 50 ? h : h + 40;
 }
 
 /** A readable fallback title from a URL: "github.com/tauri-apps" → "github.com / tauri-apps". */
@@ -37,4 +38,14 @@ export function titleFromUrl(url: string): string {
   } catch {
     return url;
   }
+}
+
+/** "app.textverified.com" → "textverified.com", "news.bbc.co.uk" → "bbc.co.uk" */
+export function rootDomain(host: string): string {
+  const parts = host.split(".");
+  if (parts.length <= 2) return host;
+  const tld = parts[parts.length - 1];
+  const sld = parts[parts.length - 2];
+  const keep = tld.length === 2 && sld.length <= 3 ? 3 : 2;
+  return parts.slice(-keep).join(".");
 }
